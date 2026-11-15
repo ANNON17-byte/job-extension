@@ -1,0 +1,42 @@
+{
+  "name": "resumeextension",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "prepare": "node -e \"const fs=require('fs'); if(!fs.existsSync('src/data/experience.ts')) fs.copyFileSync('src/data/experience.example.ts', 'src/data/experience.ts'); if(!fs.existsSync('env/.env')) fs.copyFileSync('env/.env.example', 'env/.env');\"",
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.1",
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "2.0.0-beta.33",
+    "@tailwindcss/vite": "^4.3.5",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/chrome": "^0.3.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "autoprefixer": "^10.6.2",
+    "happy-dom": "^21.0.4",
+    "jsdom": "^31.0.1",
+    "lucide-react": "^1.73.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

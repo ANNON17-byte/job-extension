@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "ApplyMate - AI Job & Internship Application Assistant",
+  "version": "1.0.0",
+  "description": "Intelligent AI-powered assistant for job and internship applications. Contextual autofill, application review, and tracking.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ApplyMate Assistant"
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["dashboard.html", "review.html", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+
