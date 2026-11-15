@@ -1,13 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="width: 380px; background-color: #020617;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ApplyMate Assistant</title>
+    <style>
+      html, body {
+        width: 380px;
+        min-height: 480px;
+        margin: 0;
+        padding: 0;
+        background-color: #020617;
+        color: #f8fafc;
+        overflow-x: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      #root {
+        width: 380px;
+        min-height: 480px;
+        background-color: #020617;
+      }
+    </style>
   </head>
   <body class="bg-slate-950 text-slate-100">
     <div id="root"></div>
     <script type="module" src="/src/popup/main.tsx"></script>
   </body>
 </html>
-
