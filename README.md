@@ -1,101 +1,141 @@
-# ApplyMate — AI-Powered Job & Internship Application Assistant
+# ⚡ ApplyMate — AI-Powered Job & Internship Application Assistant
 
-> Production-ready Chrome Extension (Manifest V3) that detects internship and job application forms, maps verified candidate profile data, provides AI-grounded contextual question generation, and offers an in-page review drawer before manual submission.
+> **Production-grade Chrome Extension (Manifest V3)** that intelligently detects job and internship applications on any ATS or portal, extracts requirements, generates grounded AI answers tailored to the job description, and populates forms ready for manual review.
+
+---
+
+## 🎯 Core Philosophy & Principles
+
+- **Zero Automated Submissions**: ApplyMate never submits forms automatically. You maintain 100% control, reviewing, editing, and approving every field before manually clicking submit.
+- **Zero Hallucination Guarantee**: All answers, project references, and skills are strictly grounded in your verified profile (*NIET Computer Science, Bytesav AI internship, Production-Level RAG, GPT-2 from Scratch*).
+- **Privacy by Design**: Personal profile data remains local inside `chrome.storage.local`. External AI processing is optional and never collects browsing history or website credentials.
 
 ---
 
 ## 🚀 Key Features
 
-1. **Intelligent Form Detection & Extraction**
-   - Automatically detects forms on Workday, Greenhouse, Lever, Ashby, BambooHR, LinkedIn, Indeed, Taleo, and custom careers sites.
-   - Dissects HTML `<input>`, `<textarea>`, `<select>`, `<input type="file">`, checkboxes, and radio buttons.
-   - Multi-signal contextual extraction: `<label for>`, enclosing labels, `aria-label`, `aria-labelledby`, `placeholder`, and section headers.
+### 1. 📋 Universal Application Form Detection
+- **Major ATS Platforms**: Greenhouse, Lever, Workday, Ashby, BambooHR, LinkedIn Easy Apply, Indeed, Handshake, Taleo, and custom career portals.
+- **Native Google Forms Support**: Full compatibility with `docs.google.com/forms` — detects questions without standard `<label>` tags, parses multi-ID `aria-labelledby`, and fires native Google `jsaction` events.
+- **Deep DOM Inspection**: Extracts inputs, textareas, native selects, radio buttons, checkboxes, file uploaders, and custom component frameworks.
 
-2. **Hybrid Field Matching & Confidence Scoring**
-   - Exact attribute matching (`name="email"`, `type="tel"`).
-   - Label regex and synonym matching (University, CGPA, Degree, Major, Graduation Date, GitHub, LinkedIn, Portfolio).
-   - Confidence scoring:
-     - 🟢 **Green (≥ 85%)**: High-confidence profile match.
-     - 🟡 **Yellow (50% – 84%)**: AI-grounded suggestion or moderate confidence.
-     - 🔴 **Red (< 50%)**: Missing or unresolved field.
+### 2. 🤖 Grounded Contextual Answer Generation
+- **Automated Tailored Cover Letters**: Reads the live job title, company name, and requirements to synthesize a custom, highly persuasive cover letter citing your verified degree, internship experience, and technical projects.
+- **Open-Ended Recruitment Questions**:
+  - *"Why do you want to join us?"*
+  - *"Describe your experience with RAG / LLMs / Python"*
+  - *"Tell us about a technical challenge you overcame"*
+  - *"What are your career goals?"*
+- **"How Did You Hear About Us?"**: Automatically populates referral source fields and matches dropdown options (`LinkedIn`, `Company Careers Page`, `Job Board`).
+- **Work Eligibility**: Answers authorization, sponsorship, relocation, and availability questions.
 
-3. **Grounded Contextual Answer Generation**
-   - Formulates responses for questions like *"Why do you want to join us?"*, *"Describe your experience with RAG"*, *"Experience with LLMs"*.
-   - **Zero Fabrication Guarantee**: Responses cite only verified facts from the candidate's profile (e.g. Bytesav internship, Production-Level RAG with FAISS/pgvector, GPT-2 small architecture from scratch).
-   - Optional user-configured Google Gemini API (`gemini-1.5-flash`, `gemini-2.0-flash`). Works offline with local grounded generator if no key is configured.
+### 3. 🎯 Job-to-Profile Match Scoring
+- Scans job postings for required and preferred skills.
+- Classifies opportunities into categories: *Generative AI Engineer, LLM Engineer, Machine Learning Engineer, Backend Developer, Frontend Developer, Full Stack Developer, etc.*
+- Calculates an **evidence-based match percentage** using verifiable profile data.
 
-4. **Robust Autofill Engine**
-   - Full support for React synthetic events via native prototype setters (`Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set`).
-   - Supports Vue, Angular, standard inputs, dropdowns, radio buttons, and textareas.
-   - **Safety First**: Never overwrites existing user input without permission. **Never automatically submits forms.**
+### 4. ⚡ Seamless Autofill Engine
+- **Framework-Aware Injection**: Uses native property setters and dispatches synthetic events (`focus`, `input`, `change`, `blur`) for React, Vue, Angular, and Google Forms.
+- **Preserves Existing Data**: Will not overwrite existing user-entered text without explicit user approval.
 
-5. **In-Page Review Drawer & Extension Popup**
-   - In-page isolated Shadow DOM drawer appears right on the careers page.
-   - Popup with 3 distinct states:
-     - **State 1**: No application detected on active tab.
-     - **State 2**: Opportunity detected & ready with match percentage.
-     - **State 3**: Populated and awaiting manual user verification.
+### 5. 🎛️ In-Page Review Drawer & 3-State Popup
+- **Isolated Shadow DOM Drawer**: Slides out on the actual job page so you can edit, clear, approve, and populate fields without switching tabs.
+- **Color-Coded Statuses**:
+  - 🟢 **Green (≥ 85%)**: High-confidence profile match.
+  - 🟡 **Yellow (50% – 84%)**: AI suggestion requiring user review.
+  - 🔴 **Red (< 50%)**: Missing information flagged for manual entry.
+- **3-State Extension Popup**:
+  - **State 1**: No application detected on active tab.
+  - **State 2**: Opportunity detected & ready with match score.
+  - **State 3**: Form populated and awaiting manual review.
 
-6. **Local Application Tracker**
-   - Store applied jobs in `chrome.storage.local`.
-   - Track statuses: *Interested*, *Preparing*, *Ready to Apply*, *Applied*, *Interview*, *Shortlisted*, *Offer*, *Rejected*.
-   - Filter and search by company, position, or status.
+### 6. 📊 Full-Featured Dashboard & Application Tracker
+- **Linear/Raycast Aesthetic**: Clean dark mode with subtle borders and responsive layout.
+- **Tabs**:
+  - **Overview**: Profile health score, active application statistics, and recent activity.
+  - **My Profile**: Full Name, Location, Contact, Academic Info, GPA, Concentrations, Coursework.
+  - **Experience**: Manage work experience (*Bytesav*, *Tipy Tipy Tap*, *Shigora.com*).
+  - **Projects**: Manage technical projects (*Production-Level RAG*, *GPT-2 From Scratch*).
+  - **Skills Database**: Categorized skill taxonomy across 8 technical domains.
+  - **Application Tracker**: Filterable, searchable local tracker for saved applications (*Interested*, *Preparing*, *Ready to Apply*, *Applied*, *Interview*, *Shortlisted*, *Offer*, *Rejected*).
+  - **Settings & AI**: Gemini API key management, model selection, and JSON profile export/backup.
 
 ---
 
-## 🔑 Google Gemini API Configuration (`env/.env`)
+## 🔒 Privacy & Git Security Architecture
 
-ApplyMate uses a dedicated `env/` folder for environment variables.
+To keep personal details and API keys private when pushing to GitHub:
 
-1. Open `env/.env` (or copy from `env/.env.example`):
-   ```bash
-   # File: env/.env
-   VITE_GEMINI_API_KEY=your_actual_gemini_api_key_here
-   VITE_GEMINI_MODEL=gemini-1.5-flash
-   ```
-2. Paste your Google Gemini API key into `VITE_GEMINI_API_KEY`.
-3. Run `pnpm build` to compile the extension with your key loaded.
-4. You can also view or update your API key anytime in the extension dashboard under **Settings & AI**.
+1. **Environment Variables**:
+   - `env/.env` is ignored by Git.
+   - `env/.env.example` is tracked as a template.
+2. **Personal Experience Data**:
+   - `src/data/experience.ts` contains personal data and is ignored by Git.
+   - `src/data/experience.example.ts` is tracked as the public template.
+   - `package.json` contains an automated `"prepare"` lifecycle script that automatically generates `src/data/experience.ts` and `env/.env` from templates if cloned fresh.
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Framework**: React 19, TypeScript
+- **Frontend**: React 19, TypeScript
 - **Styling**: Tailwind CSS
 - **Bundler**: Vite 8 + `@crxjs/vite-plugin`
 - **State Management**: Zustand
 - **Schema Validation**: Zod
 - **Testing**: Vitest + Happy-DOM
-- **Browser**: Chrome Extension Manifest V3
+- **Extension Platform**: Chrome Extension Manifest V3
 
 ---
 
-## 📦 How to Install & Load in Google Chrome
+## 📦 How to Install & Load in Google Chrome / Brave
 
-1. Build the extension:
+1. **Build the extension**:
+   ```bash
+   pnpm install
+   pnpm build
+   ```
+2. **Open Extensions Manager**:
+   - In Chrome: `chrome://extensions/`
+   - In Brave: `brave://extensions/`
+3. **Enable Developer Mode** (toggle in the top-right corner).
+4. **Click "Load unpacked"** (top-left button).
+5. **Select the `dist` folder**:
+   ```text
+   C:\Users\ASHMIT YADAV NIET\Desktop\resumeextension\dist
+   ```
+   > ⚠️ **Important**: Do not select the root project folder — select the compiled `dist` subfolder.
+6. Click the puzzle icon (🧩) in the browser toolbar and pin **ApplyMate** (📌).
+
+---
+
+## 🔑 Google Gemini API Configuration (Optional)
+
+ApplyMate works 100% offline using deterministic heuristics. To enable advanced Gemini answer generation:
+
+1. Open `env/.env`:
+   ```env
+   VITE_GEMINI_API_KEY=your_gemini_api_key_here
+   VITE_GEMINI_MODEL=gemini-1.5-flash
+   ```
+2. Rebuild the extension:
    ```bash
    pnpm build
    ```
-2. Open Google Chrome and navigate to:
-   ```text
-   chrome://extensions/
-   ```
-3. Enable **Developer mode** (toggle in the top-right corner).
-4. Click **Load unpacked**.
-5. Select the `dist` folder located in:
-   ```text
-   c:\Users\ASHMIT YADAV NIET\Desktop\resumeextension\dist
-   ```
-6. The **ApplyMate** extension icon will appear in your Chrome toolbar!
+3. Reload the extension in `chrome://extensions` (click the 🔄 icon).
 
 ---
 
 ## 🧪 Running Unit Tests
 
+Run the complete test suite (21 unit tests covering profile schemas, hybrid matching, job categorization, autofill safety, and Google Forms integration):
+
 ```bash
 pnpm test
 ```
 
-All 16 unit tests verify profile validation, Zod schemas, hybrid field matching, job categorization, and autofill safety.
-
+All 21 tests pass across:
+- `tests/profile.test.ts`
+- `tests/field-mapping.test.ts`
+- `tests/matching-and-autofill.test.ts`
+- `tests/google-forms.test.ts`
