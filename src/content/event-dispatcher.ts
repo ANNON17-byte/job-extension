@@ -1,6 +1,6 @@
 /**
  * Robust synthetic event dispatcher for modern web frameworks
- * Supports React 16+, Vue 2/3, Angular, Svelte, and standard DOM.
+ * Supports React 16+, Vue 2/3, Angular, Svelte, Google Forms (jsaction), and standard DOM.
  */
 export function setNativeValue(
   element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
@@ -16,6 +16,11 @@ export function setNativeValue(
     valueSetter.call(element, value);
   } else {
     element.value = value;
+  }
+
+  // Update data-initial-value attribute used by Google Forms
+  if (element.hasAttribute('data-initial-value') || element.classList.contains('whsOnd')) {
+    element.setAttribute('data-initial-value', value);
   }
 }
 
@@ -34,18 +39,33 @@ export function setNativeCheckbox(element: HTMLInputElement, checked: boolean): 
 }
 
 export function dispatchFrameworkEvents(element: HTMLElement): void {
-  // 1. Focus
+  // 1. Focus sequence
   element.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
   element.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 
-  // 2. Input
-  element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+  // 2. Keyboard interaction sequence
+  element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' }));
+  element.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true, key: 'a' }));
 
-  // 3. Change
-  element.dispatchEvent(new Event('change', { bubbles: true }));
+  // 3. Input sequence (supports both Event and InputEvent)
+  try {
+    element.dispatchEvent(
+      new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertText',
+      })
+    );
+  } catch {
+    element.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+  }
 
-  // 4. Blur
-  element.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+  element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a' }));
+
+  // 4. Change sequence
+  element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+  // 5. Blur sequence
   element.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+  element.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
 }
-

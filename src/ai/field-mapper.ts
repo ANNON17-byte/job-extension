@@ -21,13 +21,13 @@ export class FieldMapper {
     // --- EDUCATION ---
     {
       field: 'education.institution',
-      patterns: [/\b(university|college|institution|school|alma\s*mater)\b/i],
+      patterns: [/\b(university|college|institution|school|institute|alma\s*mater)\b/i],
       confidence: 0.92,
       getValue: (p) => p.education.institution,
     },
     {
       field: 'education.degree',
-      patterns: [/\b(degree|qualification|degree\s*level|education\s*level)\b/i],
+      patterns: [/\b(degree|qualification|degree\s*level|education\s*level|course)\b/i],
       confidence: 0.88,
       getValue: (p) => p.education.degree,
     },
@@ -45,8 +45,8 @@ export class FieldMapper {
     },
     {
       field: 'education.expectedGraduation',
-      patterns: [/\b(graduat(ion|ing)|end\s*date|completion\s*date|expected\s*graduat)\b/i],
-      confidence: 0.85,
+      patterns: [/\b(graduat(ion|ing)|end\s*date|completion\s*date|expected\s*graduat|batch|passing\s*year|year\s*of\s*graduat)\b/i],
+      confidence: 0.88,
       getValue: (p) => p.education.expectedGraduation,
     },
 
@@ -54,8 +54,9 @@ export class FieldMapper {
     {
       field: 'personal.fullName',
       patterns: [
-        /\b(full\s*name|candidate\s*name|applicant\s*name|your\s*name|legal\s*name)\b/i,
-        /^(name|fullname|candidate_name)$/i,
+        /\b(full\s*name|candidate\s*name|applicant\s*name|your\s*name|legal\s*name|student\s*name)\b/i,
+        /^(name|fullname|candidate_name|applicant_name)$/i,
+        /\bname\b/i,
       ],
       confidence: 0.95,
       getValue: (p) => p.personal.fullName,
@@ -74,39 +75,45 @@ export class FieldMapper {
     },
     {
       field: 'personal.email',
-      patterns: [/\b(e-?mail|email\s*address|electronic\s*mail)\b/i, /^email$/i],
+      patterns: [/\b(e-?mail|email\s*address|electronic\s*mail|college\s*email)\b/i, /^email$/i],
       confidence: 0.98,
       getValue: (p) => p.personal.email,
     },
     {
       field: 'personal.phone',
-      patterns: [/\b(phone|mobile|cell|contact\s*number|telephone)\b/i, /^phone$/i],
+      patterns: [/\b(phone|mobile|cell|contact\s*number|telephone|whatsapp)\b/i, /^phone$/i],
       confidence: 0.95,
       getValue: (p) => p.personal.phone,
     },
     {
       field: 'personal.location',
-      patterns: [/\b(location|city|current\s*city|residence|current\s*location)\b/i],
-      confidence: 0.85,
+      patterns: [/\b(location|city|current\s*city|residence|current\s*location|where\s*are\s*you\s*(based|located)|state)\b/i],
+      confidence: 0.88,
       getValue: (p) => p.personal.location,
     },
     {
       field: 'personal.linkedin',
-      patterns: [/\b(linkedin|linked\s*in|linkedin\s*url|linkedin\s*profile)\b/i],
+      patterns: [/\b(linkedin|linked\s*in|linkedin\s*url|linkedin\s*profile|linkedin\s*link)\b/i],
       confidence: 0.95,
       getValue: (p) => p.personal.linkedin || '',
     },
     {
       field: 'personal.github',
-      patterns: [/\b(github|git\s*hub|github\s*url|github\s*profile)\b/i],
+      patterns: [/\b(github|git\s*hub|github\s*url|github\s*profile|github\s*link)\b/i],
       confidence: 0.95,
       getValue: (p) => p.personal.github || '',
     },
     {
       field: 'personal.portfolio',
-      patterns: [/\b(portfolio|personal\s*website|personal\s*url|homepage)\b/i],
+      patterns: [/\b(portfolio|personal\s*website|personal\s*url|homepage|website\s*link)\b/i],
       confidence: 0.95,
       getValue: (p) => p.personal.portfolio || '',
+    },
+    {
+      field: 'personal.resumeLink',
+      patterns: [/\b(resume\s*(link|url)|cv\s*(link|url)|drive\s*link|google\s*drive)\b/i],
+      confidence: 0.9,
+      getValue: (p) => p.personal.portfolio || 'https://ashmityadav.in',
     },
 
     // --- SOURCE / "HOW DID YOU HEAR ABOUT US?" ---
@@ -119,7 +126,7 @@ export class FieldMapper {
       getValue: () => 'LinkedIn',
     },
 
-    // --- WORK AUTHORIZATION & COMMON APPLICATION QUESTIONS ---
+    // --- WORK AUTHORIZATION & INTERNSHIP AVAILABILITY ---
     {
       field: 'application.workAuth',
       patterns: [/\b(authorized\s*to\s*work|legally\s*authorized|work\s*authorization)\b/i],
@@ -133,10 +140,12 @@ export class FieldMapper {
       getValue: () => 'No',
     },
     {
-      field: 'application.noticePeriod',
-      patterns: [/\b(notice\s*period|earliest\s*start\s*date|available\s*to\s*start|availability)\b/i],
-      confidence: 0.88,
-      getValue: () => 'Immediate / Available upon selection',
+      field: 'application.availability',
+      patterns: [
+        /\b(available\s*for.*internship|duration\s*of\s*internship|immediate\s*join|months?\s*internship|available\s*to\s*start|earliest\s*start|notice\s*period)\b/i,
+      ],
+      confidence: 0.9,
+      getValue: () => 'Yes, available immediately',
     },
     {
       field: 'application.relocation',
@@ -162,7 +171,7 @@ export class FieldMapper {
     // --- SKILLS & CONCEPTS (short tag inputs) ---
     {
       field: 'skills.programmingLanguages',
-      patterns: [/\b(programming\s*languages|coding\s*languages|tech\s*stack|languages\s*known)\b/i],
+      patterns: [/\b(programming\s*languages|coding\s*languages|tech\s*stack|languages\s*known|skills|technical\s*skills)\b/i],
       confidence: 0.88,
       getValue: (p) => p.skills.programmingLanguages.join(', '),
     },
@@ -231,7 +240,36 @@ export class FieldMapper {
       };
     }
 
-    // 2. Open-ended Application Questions / Textareas
+    // 2. Exact attribute matching
+    const attrMatch = this.checkAttributeMatch(field, profile);
+    if (attrMatch) {
+      return attrMatch;
+    }
+
+    // 3. Rule-based pattern matching (Higher priority for deterministic contact / academic details)
+    for (const rule of this.rules) {
+      const isMatch = rule.patterns.some((pattern) => pattern.test(combinedSignals));
+      if (isMatch) {
+        const value = rule.getValue(profile, field, job);
+        if (value) {
+          const finalVal = field.type === 'select' ? this.matchSelectOption(field, value) : value;
+
+          return {
+            fieldId: field.id,
+            fieldName: field.name,
+            originalLabel: field.label || field.placeholder || field.name,
+            detectedMeaning: rule.field,
+            profilePath: rule.field,
+            suggestedValue: finalVal,
+            confidence: rule.confidence,
+            source: 'label_match',
+            status: 'approved',
+          };
+        }
+      }
+    }
+
+    // 4. Open-ended Application Questions / Textareas (AI answers)
     const isQuestion =
       field.type === 'textarea' ||
       /\b(why|how|describe|tell\s*us|explain|what\s*makes|goals|project|experience\s*with|challenge|situation|proud\s*of|interest\s*in|strengths|weaknesses)\b/i.test(
@@ -240,22 +278,6 @@ export class FieldMapper {
       combinedSignals.includes('?');
 
     if (isQuestion) {
-      // Check if it's "How did you hear about us?"
-      if (/\b(how\s*did\s*you\s*(hear|learn|find)|where\s*did\s*you\s*(hear|find|see)|referral\s*source)\b/i.test(combinedSignals)) {
-        const val = field.type === 'select' ? this.matchSelectOption(field, 'LinkedIn') : 'LinkedIn / Company Careers Page';
-        return {
-          fieldId: field.id,
-          fieldName: field.name,
-          originalLabel: field.label || field.placeholder || field.name,
-          detectedMeaning: 'How did you hear about us?',
-          profilePath: 'application.source',
-          suggestedValue: val,
-          confidence: 0.92,
-          source: 'label_match',
-          status: 'approved',
-        };
-      }
-
       const answerResult = await this.gemini.generateAnswer({
         question: field.label || field.placeholder || field.contextualText || 'Describe your qualifications',
         fieldLabel: field.label,
@@ -277,35 +299,6 @@ export class FieldMapper {
         isAiSuggestion: true,
         explanation: `Evidence: ${answerResult.evidenceUsed.join(', ')}`,
       };
-    }
-
-    // 3. Exact attribute matching
-    const attrMatch = this.checkAttributeMatch(field, profile);
-    if (attrMatch) {
-      return attrMatch;
-    }
-
-    // 4. Rule-based pattern matching (Dropdowns & standard inputs)
-    for (const rule of this.rules) {
-      const isMatch = rule.patterns.some((pattern) => pattern.test(combinedSignals));
-      if (isMatch) {
-        const value = rule.getValue(profile, field, job);
-        if (value) {
-          const finalVal = field.type === 'select' ? this.matchSelectOption(field, value) : value;
-
-          return {
-            fieldId: field.id,
-            fieldName: field.name,
-            originalLabel: field.label || field.placeholder || field.name,
-            detectedMeaning: rule.field,
-            profilePath: rule.field,
-            suggestedValue: finalVal,
-            confidence: rule.confidence,
-            source: 'label_match',
-            status: rule.confidence >= 0.85 ? 'approved' : 'pending',
-          };
-        }
-      }
     }
 
     // 5. Fallback: Unmapped / Missing information
@@ -361,19 +354,16 @@ export class FieldMapper {
     if (!field.options || field.options.length === 0) return desiredValue;
     const lower = desiredValue.toLowerCase();
 
-    // 1. Exact value or text match
     const exact = field.options.find(
       (opt) => opt.value.toLowerCase() === lower || opt.text.toLowerCase() === lower
     );
     if (exact) return exact.value || exact.text;
 
-    // 2. Substring match
     const substring = field.options.find(
       (opt) => opt.text.toLowerCase().includes(lower) || lower.includes(opt.text.toLowerCase())
     );
     if (substring) return substring.value || substring.text;
 
-    // 3. For source dropdowns, look for common patterns
     if (lower.includes('linkedin')) {
       const opt = field.options.find((o) =>
         /linkedin|job\s*board|online|internet|social|career/i.test(o.text)
@@ -381,13 +371,8 @@ export class FieldMapper {
       if (opt) return opt.value || opt.text;
     }
 
-    // 4. For yes/no dropdowns
-    if (lower === 'yes') {
-      const opt = field.options.find((o) => /yes|true|authorized/i.test(o.text) || o.value === 'yes' || o.value === '1');
-      if (opt) return opt.value || opt.text;
-    }
-    if (lower === 'no') {
-      const opt = field.options.find((o) => /no|false|none/i.test(o.text) || o.value === 'no' || o.value === '0');
+    if (lower.includes('yes') || lower.includes('immediate')) {
+      const opt = field.options.find((o) => /yes|true|authorized|immediate/i.test(o.text) || o.value === 'yes' || o.value === '1');
       if (opt) return opt.value || opt.text;
     }
 

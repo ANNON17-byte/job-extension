@@ -25,15 +25,20 @@ export class FieldExtractor {
     if (el.getAttribute('type') === 'hidden') return true;
     if (el.getAttribute('type') === 'submit' || el.getAttribute('type') === 'button') return true;
 
+    // Google Forms has hidden inputs for history / token
+    const name = (el.getAttribute('name') || '').toLowerCase();
+    const id = (el.id || '').toLowerCase();
+    if (name === 'fbzx' || name === 'fvv' || name === 'pagehistory' || name === 'draftresponse') {
+      return true;
+    }
+
     // Check display or visibility
     const style = window.getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
       return true;
     }
 
-    // Ignore search bars, login password fields if not part of application
-    const name = (el.getAttribute('name') || '').toLowerCase();
-    const id = (el.id || '').toLowerCase();
+    // Ignore search bars
     if (name.includes('search') || id.includes('search')) return true;
 
     return false;
@@ -56,8 +61,10 @@ export class FieldExtractor {
     else if (typeAttr === 'date') type = 'date';
     else if (typeAttr === 'password') type = 'password';
 
-    // Generate stable unique field selector / id
+    // Stamp DOM element with guaranteed unique data-attribute for 100% reliable locator
     const fieldId = el.id || el.getAttribute('name') || `applymate-field-${index}`;
+    el.setAttribute('data-applymate-id', fieldId);
+
     const name = el.getAttribute('name') || '';
     const htmlId = el.id || '';
     const placeholder = el.getAttribute('placeholder') || '';
@@ -72,7 +79,7 @@ export class FieldExtractor {
       currentValue = (el as HTMLSelectElement).value || '';
     }
 
-    // Extract label from multiple sources
+    // Extract label from multiple sources including Google Forms and ARIA
     const label = this.extractLabel(el);
 
     // Extract dropdown options if select
@@ -90,7 +97,6 @@ export class FieldExtractor {
     // Contextual text (surrounding parent heading, section, or legend)
     const contextualText = this.extractContextualText(el);
 
-    // Max length
     const maxLenAttr = el.getAttribute('maxlength');
     const maxLength = maxLenAttr ? parseInt(maxLenAttr, 10) : undefined;
 
@@ -111,69 +117,93 @@ export class FieldExtractor {
   }
 
   private extractLabel(el: HTMLElement): string {
-    // 1. Explicit <label for="...">
+    // 1. Google Forms question item container (Specific & robust for docs.google.com/forms)
+    const googleItem = el.closest('div[role="listitem"], .Qr7Oae, .geS5n, [jsmodel]');
+    if (googleItem) {
+      const heading = googleItem.querySelector('div[role="heading"], .M7eMe, [aria-level="3"], span.M7eMe');
+      if (heading && heading.textContent) {
+        const clean = this.cleanLabelText(heading.textContent);
+        if (clean) return clean;
+      }
+    }
+
+    // 2. aria-labelledby (handles space-separated multiple IDs e.g. "i1 i4" on Google Forms)
+    const labelledby = el.getAttribute('aria-labelledby');
+    if (labelledby) {
+      const ids = labelledby.split(/\s+/).filter(Boolean);
+      for (const id of ids) {
+        const labelEl = document.getElementById(id);
+        if (labelEl && labelEl.textContent) {
+          const clean = this.cleanLabelText(labelEl.textContent);
+          if (clean && !clean.toLowerCase().includes('required question')) {
+            return clean;
+          }
+        }
+      }
+    }
+
+    // 3. Explicit <label for="...">
     if (el.id) {
       const labelEl = document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(el.id)}"]`);
       if (labelEl && labelEl.textContent) {
-        return labelEl.textContent.trim();
+        return this.cleanLabelText(labelEl.textContent);
       }
     }
 
-    // 2. Enclosing <label>
+    // 4. Enclosing <label>
     const parentLabel = el.closest('label');
     if (parentLabel && parentLabel.textContent) {
-      // Remove text of child inputs if any
       const clone = parentLabel.cloneNode(true) as HTMLElement;
       clone.querySelectorAll('input, select, textarea, button').forEach((child) => child.remove());
       const text = clone.textContent?.trim();
-      if (text) return text;
+      if (text) return this.cleanLabelText(text);
     }
 
-    // 3. aria-labelledby
-    const labelledby = el.getAttribute('aria-labelledby');
-    if (labelledby) {
-      const labelEl = document.getElementById(labelledby);
-      if (labelEl && labelEl.textContent) {
-        return labelEl.textContent.trim();
-      }
-    }
-
-    // 4. aria-label
+    // 5. aria-label
     if (el.getAttribute('aria-label')) {
-      return el.getAttribute('aria-label')!.trim();
+      const clean = this.cleanLabelText(el.getAttribute('aria-label')!);
+      if (clean) return clean;
     }
 
-    // 5. Placeholder fallback
+    // 6. Placeholder fallback
     if (el.getAttribute('placeholder')) {
-      return el.getAttribute('placeholder')!.trim();
+      return this.cleanLabelText(el.getAttribute('placeholder')!);
     }
 
-    // 6. Closest previous sibling or parent element with text
+    // 7. Closest previous sibling or parent element with text
     const prevSibling = el.previousElementSibling;
     if (prevSibling && prevSibling.textContent && prevSibling.textContent.length < 100) {
-      return prevSibling.textContent.trim();
+      return this.cleanLabelText(prevSibling.textContent);
     }
 
     const parentDiv = el.parentElement;
     if (parentDiv) {
       const header = parentDiv.querySelector('label, h3, h4, h5, span, p');
       if (header && header.textContent && header.textContent.length < 100) {
-        return header.textContent.trim();
+        return this.cleanLabelText(header.textContent);
       }
     }
 
     return '';
   }
 
+  private cleanLabelText(raw: string): string {
+    return raw
+      .replace(/[\n\r\t]+/g, ' ')
+      .replace(/\s*\*\s*$/, '') // remove trailing required asterisk
+      .replace(/Required question/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   private extractContextualText(el: HTMLElement): string {
-    // Search upwards for fieldset legend, section header, or card header
     const fieldset = el.closest('fieldset');
     if (fieldset) {
       const legend = fieldset.querySelector('legend');
       if (legend && legend.textContent) return legend.textContent.trim();
     }
 
-    const section = el.closest('section, form, [class*="form-group"], [class*="section"]');
+    const section = el.closest('section, form, [class*="form-group"], [class*="section"], [role="listitem"]');
     if (section) {
       const heading = section.querySelector('h1, h2, h3, h4, [class*="title"], [class*="heading"]');
       if (heading && heading.textContent) return heading.textContent.trim();
@@ -182,4 +212,3 @@ export class FieldExtractor {
     return '';
   }
 }
-

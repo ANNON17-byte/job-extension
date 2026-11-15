@@ -11,7 +11,7 @@ export class AutofillEngine {
   /**
    * Safely fills the approved field mappings on the current page.
    * Never overwrites existing user input unless approved or empty.
-   * Dispatches framework events for React/Angular/Vue.
+   * Dispatches framework events for React/Angular/Vue/Google Forms.
    */
   async fillFields(
     mappings: FieldMapping[],
@@ -22,8 +22,8 @@ export class AutofillEngine {
     const errors: string[] = [];
 
     for (const mapping of mappings) {
-      // Only fill approved or high-confidence fields
-      if (mapping.status === 'rejected' || mapping.status === 'missing') {
+      // Only skip explicitly rejected fields or fields with zero value
+      if (mapping.status === 'rejected') {
         skippedCount++;
         continue;
       }
@@ -36,7 +36,8 @@ export class AutofillEngine {
 
       const element = this.findElement(mapping);
       if (!element) {
-        errors.push(`Could not locate element for "${mapping.fieldName}"`);
+        errors.push(`Could not locate element for "${mapping.fieldName || mapping.originalLabel}"`);
+        skippedCount++;
         continue;
       }
 
@@ -50,7 +51,8 @@ export class AutofillEngine {
           skippedCount++;
         }
       } catch (err) {
-        errors.push(`Failed to fill ${mapping.fieldName}: ${err}`);
+        errors.push(`Failed to fill ${mapping.fieldName || mapping.originalLabel}: ${err}`);
+        skippedCount++;
       }
     }
 
@@ -58,33 +60,55 @@ export class AutofillEngine {
   }
 
   private findElement(mapping: FieldMapping): HTMLElement | null {
-    // 1. Try by htmlId
+    // 1. Direct stamped data-attribute match (100% reliable across Google Forms, React, SPAs)
+    if (mapping.fieldId) {
+      const byDataId = document.querySelector<HTMLElement>(`[data-applymate-id="${CSS.escape(mapping.fieldId)}"]`);
+      if (byDataId) return byDataId;
+    }
+
+    // 2. Try by htmlId
     if (mapping.fieldId && !mapping.fieldId.startsWith('applymate-field-')) {
       const byId = document.getElementById(mapping.fieldId);
       if (byId) return byId;
 
-      // 2. Try by name
       const byName = document.querySelector<HTMLElement>(`[name="${CSS.escape(mapping.fieldId)}"]`);
       if (byName) return byName;
     }
 
+    // 3. Try by name
     if (mapping.fieldName) {
       const byName = document.querySelector<HTMLElement>(`[name="${CSS.escape(mapping.fieldName)}"]`);
       if (byName) return byName;
     }
 
-    // 3. Try finding by matching label
-    const allLabels = Array.from(document.querySelectorAll('label'));
-    const matchedLabel = allLabels.find((l) =>
-      l.textContent?.toLowerCase().includes(mapping.originalLabel.toLowerCase())
-    );
-    if (matchedLabel) {
-      if (matchedLabel.htmlFor) {
-        const target = document.getElementById(matchedLabel.htmlFor);
-        if (target) return target;
+    // 4. Try finding by matching label text across all labels and Google Forms headings
+    const labelTextLower = (mapping.originalLabel || '').toLowerCase().trim();
+    if (labelTextLower) {
+      // 4a. Standard HTML <label>
+      const allLabels = Array.from(document.querySelectorAll('label'));
+      const matchedLabel = allLabels.find((l) =>
+        l.textContent?.toLowerCase().includes(labelTextLower)
+      );
+      if (matchedLabel) {
+        if (matchedLabel.htmlFor) {
+          const target = document.getElementById(matchedLabel.htmlFor);
+          if (target) return target;
+        }
+        const childInput = matchedLabel.querySelector<HTMLElement>('input, textarea, select');
+        if (childInput) return childInput;
       }
-      const childInput = matchedLabel.querySelector<HTMLElement>('input, textarea, select');
-      if (childInput) return childInput;
+
+      // 4b. Google Forms item headings (div[role="heading"], .M7eMe)
+      const googleHeadings = Array.from(
+        document.querySelectorAll<HTMLElement>('div[role="heading"], .M7eMe, [role="listitem"]')
+      );
+      for (const heading of googleHeadings) {
+        if (heading.textContent?.toLowerCase().includes(labelTextLower)) {
+          const container = heading.closest('div[role="listitem"], .Qr7Oae, .geS5n') || heading;
+          const input = container.querySelector<HTMLElement>('input:not([type="hidden"]), textarea');
+          if (input) return input;
+        }
+      }
     }
 
     return null;
@@ -98,7 +122,7 @@ export class AutofillEngine {
     const tagName = element.tagName.toLowerCase();
     const type = (element.getAttribute('type') || '').toLowerCase();
 
-    // 1. Inputs & Textareas
+    // 1. Inputs & Textareas (including Google Forms whsOnd & KHxj8b inputs)
     if (tagName === 'input' || tagName === 'textarea') {
       const inputEl = element as HTMLInputElement | HTMLTextAreaElement;
 
@@ -111,7 +135,7 @@ export class AutofillEngine {
 
       if (type === 'radio') {
         const radioEl = inputEl as HTMLInputElement;
-        if (radioEl.value.toLowerCase() === value.toLowerCase()) {
+        if (radioEl.value.toLowerCase() === value.toLowerCase() || value.toLowerCase() === 'yes') {
           setNativeCheckbox(radioEl, true);
           dispatchFrameworkEvents(radioEl);
           return true;
@@ -119,14 +143,24 @@ export class AutofillEngine {
         return false;
       }
 
-      // Check existing value
+      // Check existing value: if already filled and overwriteExisting is false, do not wipe user data
       if (inputEl.value && inputEl.value.trim().length > 0 && !overwriteExisting) {
-        // Do not overwrite existing user-entered text without permission
+        // If it's already filled with the exact same value, consider it filled
+        if (inputEl.value.trim() === value.trim()) return true;
         return false;
       }
 
+      // Set value and trigger all framework listeners
       setNativeValue(inputEl, value);
       dispatchFrameworkEvents(inputEl);
+
+      // Special handling for Google Forms floating label (jsaction, data-initial-value)
+      inputEl.setAttribute('data-initial-value', value);
+      const parentLabel = inputEl.closest('.quantumWizTextinputPaperinputEl, .rFrNMe, .geS5n');
+      if (parentLabel) {
+        parentLabel.classList.add('isFocused', 'hasValue');
+      }
+
       return true;
     }
 
@@ -135,7 +169,6 @@ export class AutofillEngine {
       const selectEl = element as HTMLSelectElement;
       let matched = false;
 
-      // Match by option value or option text
       for (let i = 0; i < selectEl.options.length; i++) {
         const opt = selectEl.options[i];
         if (
@@ -174,7 +207,7 @@ export class AutofillEngine {
     const originalShadow = element.style.boxShadow;
 
     element.style.borderColor = '#10b981'; // subtle emerald green
-    element.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.2)';
+    element.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.25)';
     element.style.transition = 'border-color 0.3s, box-shadow 0.3s';
 
     setTimeout(() => {
@@ -183,4 +216,3 @@ export class AutofillEngine {
     }, 4000);
   }
 }
-
