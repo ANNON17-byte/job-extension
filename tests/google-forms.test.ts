@@ -17,7 +17,9 @@ describe('Google Forms Detection & Autofill Integration', () => {
             </div>
             <div class="Xb9hP">
               <input type="text" class="whsOnd zHQkBf" jsname="YPqjbf" autocomplete="off" aria-labelledby="i1 i4" value="" />
+              <div class="nd9RD">Your answer</div>
             </div>
+            <div class="RHiNhe" role="alert">This is a required question</div>
           </div>
         </div>
 
@@ -182,5 +184,30 @@ describe('Google Forms Detection & Autofill Integration', () => {
 
     const textarea = document.querySelector('textarea.KHxj8b') as HTMLTextAreaElement;
     expect(textarea.value.length).toBeGreaterThan(20);
+
+    // Verify Google Forms placeholder and error suppression
+    const placeholder = document.querySelector('.nd9RD') as HTMLElement;
+    expect(placeholder.style.display).toBe('none');
+
+    const errorAlert = document.querySelector('.RHiNhe') as HTMLElement;
+    expect(errorAlert.style.display).toBe('none');
+  });
+
+  it('maps "Year of Graduation" specifically to 4-digit year 2028', async () => {
+    const mapper = new FieldMapper();
+    const fields = [
+      {
+        id: 'f_grad_year',
+        name: 'entry.12345',
+        type: 'text' as const,
+        label: 'Year of Graduation *',
+        confidence: 0.9,
+      },
+    ];
+
+    const mappings = await mapper.mapFields(fields, seedProfile);
+    expect(mappings.length).toBe(1);
+    expect(mappings[0].suggestedValue).toBe('2028');
   });
 });
+

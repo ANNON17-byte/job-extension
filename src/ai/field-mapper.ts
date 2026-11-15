@@ -47,7 +47,15 @@ export class FieldMapper {
       field: 'education.expectedGraduation',
       patterns: [/\b(graduat(ion|ing)|end\s*date|completion\s*date|expected\s*graduat|batch|passing\s*year|year\s*of\s*graduat)\b/i],
       confidence: 0.88,
-      getValue: (p) => p.education.expectedGraduation,
+      getValue: (p, f) => {
+        const text = `${f.label} ${f.name}`.toLowerCase();
+        // If field specifically asks for year (e.g. "Year of Graduation", "Passing Year", "Batch") or numeric input
+        if (/\b(year|batch)\b/i.test(text) || f.type === 'number') {
+          const match = p.education.expectedGraduation.match(/\b(20\d\d)\b/);
+          if (match) return match[1];
+        }
+        return p.education.expectedGraduation;
+      },
     },
 
     // --- PERSONAL INFO ---

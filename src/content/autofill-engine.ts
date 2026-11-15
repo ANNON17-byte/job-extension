@@ -1,5 +1,10 @@
 import type { FieldMapping } from '../types/form';
-import { setNativeValue, setNativeCheckbox, dispatchFrameworkEvents } from './event-dispatcher';
+import {
+  setNativeValue,
+  setNativeCheckbox,
+  dispatchFrameworkEvents,
+  fillInputWithNativeFallback,
+} from './event-dispatcher';
 
 export interface AutofillResult {
   filledCount: number;
@@ -150,17 +155,8 @@ export class AutofillEngine {
         return false;
       }
 
-      // Set value and trigger all framework listeners
-      setNativeValue(inputEl, value);
-      dispatchFrameworkEvents(inputEl);
-
-      // Special handling for Google Forms floating label (jsaction, data-initial-value)
-      inputEl.setAttribute('data-initial-value', value);
-      const parentLabel = inputEl.closest('.quantumWizTextinputPaperinputEl, .rFrNMe, .geS5n');
-      if (parentLabel) {
-        parentLabel.classList.add('isFocused', 'hasValue');
-      }
-
+      // Set value with native chromium fallback, framework events, and Google Forms handling
+      fillInputWithNativeFallback(inputEl, value);
       return true;
     }
 
