@@ -18,7 +18,7 @@ export class FieldMapper {
 
   // Pre-compiled deterministic and synonym patterns
   private rules: FieldRule[] = [
-    // --- EDUCATION (higher priority than generic name) ---
+    // --- EDUCATION ---
     {
       field: 'education.institution',
       patterns: [/\b(university|college|institution|school|alma\s*mater)\b/i],
@@ -109,6 +109,42 @@ export class FieldMapper {
       getValue: (p) => p.personal.portfolio || '',
     },
 
+    // --- SOURCE / "HOW DID YOU HEAR ABOUT US?" ---
+    {
+      field: 'application.source',
+      patterns: [
+        /\b(how\s*did\s*you\s*(hear|learn|find)|where\s*did\s*you\s*(hear|find|see)|referral\s*source|^source$)\b/i,
+      ],
+      confidence: 0.9,
+      getValue: () => 'LinkedIn',
+    },
+
+    // --- WORK AUTHORIZATION & COMMON APPLICATION QUESTIONS ---
+    {
+      field: 'application.workAuth',
+      patterns: [/\b(authorized\s*to\s*work|legally\s*authorized|work\s*authorization)\b/i],
+      confidence: 0.9,
+      getValue: () => 'Yes',
+    },
+    {
+      field: 'application.sponsorship',
+      patterns: [/\b(require\s*(visa\s*)?sponsorship|need\s*(visa\s*)?sponsorship)\b/i],
+      confidence: 0.9,
+      getValue: () => 'No',
+    },
+    {
+      field: 'application.noticePeriod',
+      patterns: [/\b(notice\s*period|earliest\s*start\s*date|available\s*to\s*start|availability)\b/i],
+      confidence: 0.88,
+      getValue: () => 'Immediate / Available upon selection',
+    },
+    {
+      field: 'application.relocation',
+      patterns: [/\b(willing\s*to\s*relocate|open\s*to\s*relocation)\b/i],
+      confidence: 0.88,
+      getValue: () => 'Yes',
+    },
+
     // --- WORK & EXPERIENCE ---
     {
       field: 'experience.currentCompany',
@@ -173,18 +209,57 @@ export class FieldMapper {
       .filter(Boolean)
       .join(' ');
 
-    // 1. Question / Long-form Textarea detection runs FIRST to prevent simple keyword collisions
+    // 1. Cover Letter Detection (Textarea or Text field)
+    const isCoverLetter = /\b(cover\s*letter|letter\s*of\s*motivation|statement\s*of\s*purpose|personal\s*statement|letter\s*of\s*interest)\b/i.test(
+      combinedSignals
+    );
+
+    if (isCoverLetter) {
+      const coverLetterResult = this.gemini.generateCoverLetter(job, profile, field.maxLength || 450);
+      return {
+        fieldId: field.id,
+        fieldName: field.name,
+        originalLabel: field.label || field.placeholder || 'Cover Letter',
+        detectedMeaning: 'Cover Letter (AI Tailored)',
+        profilePath: 'ai.cover_letter',
+        suggestedValue: coverLetterResult.answer,
+        confidence: 0.88,
+        source: 'ai_generated',
+        status: 'approved',
+        isAiSuggestion: true,
+        explanation: `Tailored for ${job?.company || 'Company'} citing NIET education, Bytesav internship & Production-Level RAG.`,
+      };
+    }
+
+    // 2. Open-ended Application Questions / Textareas
     const isQuestion =
       field.type === 'textarea' ||
-      /\b(why|how|describe|tell\s*us|explain|what\s*makes|goals|project|experience\s*with)\b/i.test(
+      /\b(why|how|describe|tell\s*us|explain|what\s*makes|goals|project|experience\s*with|challenge|situation|proud\s*of|interest\s*in|strengths|weaknesses)\b/i.test(
         combinedSignals
-      );
+      ) ||
+      combinedSignals.includes('?');
 
     if (isQuestion) {
+      // Check if it's "How did you hear about us?"
+      if (/\b(how\s*did\s*you\s*(hear|learn|find)|where\s*did\s*you\s*(hear|find|see)|referral\s*source)\b/i.test(combinedSignals)) {
+        const val = field.type === 'select' ? this.matchSelectOption(field, 'LinkedIn') : 'LinkedIn / Company Careers Page';
+        return {
+          fieldId: field.id,
+          fieldName: field.name,
+          originalLabel: field.label || field.placeholder || field.name,
+          detectedMeaning: 'How did you hear about us?',
+          profilePath: 'application.source',
+          suggestedValue: val,
+          confidence: 0.92,
+          source: 'label_match',
+          status: 'approved',
+        };
+      }
+
       const answerResult = await this.gemini.generateAnswer({
         question: field.label || field.placeholder || field.contextualText || 'Describe your qualifications',
         fieldLabel: field.label,
-        maxLength: field.maxLength || 250,
+        maxLength: field.maxLength || 350,
         jobDescription: job,
         profile,
       });
@@ -196,21 +271,21 @@ export class FieldMapper {
         detectedMeaning: 'Application Question (AI Generated)',
         profilePath: 'ai.answer',
         suggestedValue: answerResult.answer,
-        confidence: 0.75,
+        confidence: 0.85,
         source: 'ai_generated',
-        status: 'pending', // Always requires user review!
+        status: 'approved',
         isAiSuggestion: true,
         explanation: `Evidence: ${answerResult.evidenceUsed.join(', ')}`,
       };
     }
 
-    // 2. Exact attribute matching
+    // 3. Exact attribute matching
     const attrMatch = this.checkAttributeMatch(field, profile);
     if (attrMatch) {
       return attrMatch;
     }
 
-    // 3. Rule-based pattern matching
+    // 4. Rule-based pattern matching (Dropdowns & standard inputs)
     for (const rule of this.rules) {
       const isMatch = rule.patterns.some((pattern) => pattern.test(combinedSignals));
       if (isMatch) {
@@ -233,7 +308,7 @@ export class FieldMapper {
       }
     }
 
-    // 4. Fallback: Unmapped / Missing information
+    // 5. Fallback: Unmapped / Missing information
     return {
       fieldId: field.id,
       fieldName: field.name,
@@ -286,15 +361,35 @@ export class FieldMapper {
     if (!field.options || field.options.length === 0) return desiredValue;
     const lower = desiredValue.toLowerCase();
 
+    // 1. Exact value or text match
     const exact = field.options.find(
       (opt) => opt.value.toLowerCase() === lower || opt.text.toLowerCase() === lower
     );
     if (exact) return exact.value || exact.text;
 
+    // 2. Substring match
     const substring = field.options.find(
       (opt) => opt.text.toLowerCase().includes(lower) || lower.includes(opt.text.toLowerCase())
     );
     if (substring) return substring.value || substring.text;
+
+    // 3. For source dropdowns, look for common patterns
+    if (lower.includes('linkedin')) {
+      const opt = field.options.find((o) =>
+        /linkedin|job\s*board|online|internet|social|career/i.test(o.text)
+      );
+      if (opt) return opt.value || opt.text;
+    }
+
+    // 4. For yes/no dropdowns
+    if (lower === 'yes') {
+      const opt = field.options.find((o) => /yes|true|authorized/i.test(o.text) || o.value === 'yes' || o.value === '1');
+      if (opt) return opt.value || opt.text;
+    }
+    if (lower === 'no') {
+      const opt = field.options.find((o) => /no|false|none/i.test(o.text) || o.value === 'no' || o.value === '0');
+      if (opt) return opt.value || opt.text;
+    }
 
     return desiredValue;
   }

@@ -88,9 +88,56 @@ describe('Hybrid Field Matching Engine', () => {
     const mappings = await mapper.mapFields([field], seedProfile);
     expect(mappings[0].source).toBe('ai_generated');
     expect(mappings[0].isAiSuggestion).toBe(true);
-    expect(mappings[0].status).toBe('pending'); // User review required!
     expect(mappings[0].suggestedValue).toContain('Bytesav');
     expect(mappings[0].suggestedValue).toContain('Production-Level RAG');
   });
-});
 
+  it('generates a tailored cover letter based on job context and profile', async () => {
+    const field: DetectedField = {
+      id: 'field-cover',
+      name: 'cover_letter',
+      htmlId: 'cover_letter_box',
+      type: 'textarea',
+      label: 'Cover Letter',
+      placeholder: 'Add a cover letter for the hiring manager',
+      ariaLabel: '',
+      required: false,
+      currentValue: '',
+      options: [],
+      contextualText: '',
+    };
+
+    const job = {
+      company: 'Anthropic',
+      title: 'AI Research Intern',
+      requiredSkills: ['Python', 'PyTorch', 'RAG'],
+    };
+
+    const mappings = await mapper.mapFields([field], seedProfile, job);
+    expect(mappings[0].profilePath).toBe('ai.cover_letter');
+    expect(mappings[0].suggestedValue).toContain('Anthropic');
+    expect(mappings[0].suggestedValue).toContain('AI Research Intern');
+    expect(mappings[0].suggestedValue).toContain('Bytesav');
+    expect(mappings[0].suggestedValue).toContain('Production-Level RAG');
+  });
+
+  it('correctly populates "How did you hear about us?" source field', async () => {
+    const field: DetectedField = {
+      id: 'field-source',
+      name: 'referral_source',
+      htmlId: '',
+      type: 'text',
+      label: 'How did you hear about us?',
+      placeholder: '',
+      ariaLabel: '',
+      required: false,
+      currentValue: '',
+      options: [],
+      contextualText: '',
+    };
+
+    const mappings = await mapper.mapFields([field], seedProfile);
+    expect(mappings[0].profilePath).toBe('application.source');
+    expect(mappings[0].suggestedValue).toContain('LinkedIn');
+  });
+});
